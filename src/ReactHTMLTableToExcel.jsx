@@ -23,14 +23,30 @@ class ReactHTMLTableToExcel extends Component {
     this.handleDownload = this.handleDownload.bind(this);
   }
 
-  static base64(s) {
-    return window.btoa(unescape(encodeURIComponent(s)));
+  // Helper function to convert HTML table to CSV
+  tableToCSV() {
+    const table = document.getElementById(this.props.table);
+    const rows = table.querySelectorAll('tr');
+    let csv = '';
+    
+    rows.forEach((row) => {
+      const cols = row.querySelectorAll('td, th');
+      const rowData = [];
+      cols.forEach((col) => {
+        let cellText = col.innerText.trim();
+        cellText = cellText.replace(/"/g, '""'); // Escape any quotes
+        if (cellText.includes(',')) {
+          cellText = `"${cellText}"`; // Wrap in quotes if it contains commas
+        }
+        rowData.push(cellText);
+      });
+      csv += rowData.join(',') + '\r\n'; // Join with commas, add new line for each row
+    });
+
+    return csv;
   }
 
-  static format(s, c) {
-    return s.replace(/{(\w+)}/g, (m, p) => c[p]);
-  }
-
+  // Handle file download logic
   handleDownload() {
     if (!document) {
       if (process.env.NODE_ENV !== 'production') {
@@ -41,17 +57,15 @@ class ReactHTMLTableToExcel extends Component {
 
     if (document.getElementById(this.props.table).nodeType !== 1 || document.getElementById(this.props.table).nodeName !== 'TABLE') {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Provided table property is not html table element');
+        console.error('Provided table property is not an HTML table element');
       }
       return null;
     }
 
-    // Get the table HTML
-    const table = document.getElementById(this.props.table).outerHTML;
-    const sheet = String(this.props.sheet);
-    const filename = `${String(this.props.filename)}.xlsx`;
+    // Generate CSV data from the HTML table
+    const csv = this.tableToCSV();
 
-    // Basic XML template for the Excel workbook
+    // Mimic an Excel file using CSV data in a .xlsx wrapper
     const uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,';
     const template =
       '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
@@ -59,30 +73,30 @@ class ReactHTMLTableToExcel extends Component {
       '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' +
       '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' +
       '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>' +
-      '<body>{table}</body></html>';
+      '<body><pre>{csv}</pre></body></html>';
 
     const context = {
-      worksheet: sheet || 'Worksheet',
-      table,
+      worksheet: this.props.sheet || 'Sheet1',
+      csv, // Insert the CSV data as body content
     };
 
-    // For IE11 compatibility
+    const filename = `${String(this.props.filename)}.xlsx`;
+
+    // For Internet Explorer (IE11 support)
     if (window.navigator.msSaveOrOpenBlob) {
       const fileData = [
         `${'<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]>' +
         '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' +
         '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' +
-        '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'}${table}</body></html>`
+        '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><pre>'}${csv}</pre></body></html>`
       ];
       const blobObject = new Blob(fileData, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-      document.getElementById('react-html-table-to-excel').click(() => {
-        window.navigator.msSaveOrOpenBlob(blobObject, filename);
-      });
+      window.navigator.msSaveOrOpenBlob(blobObject, filename);
       return true;
     }
 
     // For modern browsers
-    const element = window.document.createElement('a');
+    const element = document.createElement('a');
     element.href = uri + ReactHTMLTableToExcel.base64(ReactHTMLTableToExcel.format(template, context));
     element.download = filename;
     document.body.appendChild(element);

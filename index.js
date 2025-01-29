@@ -50,7 +50,36 @@ var ReactHTMLTableToExcel = function (_Component) {
     return _this;
   }
 
+  // Helper function to convert HTML table to CSV
+
+
   _createClass(ReactHTMLTableToExcel, [{
+    key: 'tableToCSV',
+    value: function tableToCSV() {
+      var table = document.getElementById(this.props.table);
+      var rows = table.querySelectorAll('tr');
+      var csv = '';
+
+      rows.forEach(function (row) {
+        var cols = row.querySelectorAll('td, th');
+        var rowData = [];
+        cols.forEach(function (col) {
+          var cellText = col.innerText.trim();
+          cellText = cellText.replace(/"/g, '""'); // Escape any quotes
+          if (cellText.includes(',')) {
+            cellText = '"' + cellText + '"'; // Wrap in quotes if it contains commas
+          }
+          rowData.push(cellText);
+        });
+        csv += rowData.join(',') + '\r\n'; // Join with commas, add new line for each row
+      });
+
+      return csv;
+    }
+
+    // Handle file download logic
+
+  }, {
     key: 'handleDownload',
     value: function handleDownload() {
       if (!document) {
@@ -62,37 +91,35 @@ var ReactHTMLTableToExcel = function (_Component) {
 
       if (document.getElementById(this.props.table).nodeType !== 1 || document.getElementById(this.props.table).nodeName !== 'TABLE') {
         if (process.env.NODE_ENV !== 'production') {
-          console.error('Provided table property is not html table element');
+          console.error('Provided table property is not an HTML table element');
         }
         return null;
       }
 
-      // Get the table HTML
-      var table = document.getElementById(this.props.table).outerHTML;
-      var sheet = String(this.props.sheet);
-      var filename = String(this.props.filename) + '.xlsx';
+      // Generate CSV data from the HTML table
+      var csv = this.tableToCSV();
 
-      // Basic XML template for the Excel workbook
+      // Mimic an Excel file using CSV data in a .xlsx wrapper
       var uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,';
-      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' + '<head><meta charset="UTF-8"><!--[if gte mso 9]>' + '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' + '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>' + '<body>{table}</body></html>';
+      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' + '<head><meta charset="UTF-8"><!--[if gte mso 9]>' + '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' + '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>' + '<body><pre>{csv}</pre></body></html>';
 
       var context = {
-        worksheet: sheet || 'Worksheet',
-        table: table
+        worksheet: this.props.sheet || 'Sheet1',
+        csv: csv // Insert the CSV data as body content
       };
 
-      // For IE11 compatibility
+      var filename = String(this.props.filename) + '.xlsx';
+
+      // For Internet Explorer (IE11 support)
       if (window.navigator.msSaveOrOpenBlob) {
-        var fileData = ['' + ('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]>' + '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' + '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>') + table + '</body></html>'];
+        var fileData = ['' + ('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]>' + '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' + '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><pre>') + csv + '</pre></body></html>'];
         var blobObject = new Blob(fileData, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        document.getElementById('react-html-table-to-excel').click(function () {
-          window.navigator.msSaveOrOpenBlob(blobObject, filename);
-        });
+        window.navigator.msSaveOrOpenBlob(blobObject, filename);
         return true;
       }
 
       // For modern browsers
-      var element = window.document.createElement('a');
+      var element = document.createElement('a');
       element.href = uri + ReactHTMLTableToExcel.base64(ReactHTMLTableToExcel.format(template, context));
       element.download = filename;
       document.body.appendChild(element);
@@ -114,18 +141,6 @@ var ReactHTMLTableToExcel = function (_Component) {
         },
         this.props.buttonText
       );
-    }
-  }], [{
-    key: 'base64',
-    value: function base64(s) {
-      return window.btoa(unescape(encodeURIComponent(s)));
-    }
-  }, {
-    key: 'format',
-    value: function format(s, c) {
-      return s.replace(/{(\w+)}/g, function (m, p) {
-        return c[p];
-      });
     }
   }]);
 
