@@ -20,44 +20,41 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } /* global window, document, Blob */
-
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var propTypes = {
   table: _propTypes2.default.string.isRequired,
   filename: _propTypes2.default.string.isRequired,
-  sheet: _propTypes2.default.string.isRequired,
   id: _propTypes2.default.string,
   className: _propTypes2.default.string,
   buttonText: _propTypes2.default.string
 };
 
 var defaultProps = {
-  id: 'button-download-as-xls',
+  id: 'button-download-as-csv',
   className: 'button-download',
-  buttonText: 'Download'
+  buttonText: 'Download CSV'
 };
 
-var ReactHTMLTableToExcel = function (_Component) {
-  _inherits(ReactHTMLTableToExcel, _Component);
+var ReactHTMLTableToCSV = function (_Component) {
+  _inherits(ReactHTMLTableToCSV, _Component);
 
-  function ReactHTMLTableToExcel(props) {
-    _classCallCheck(this, ReactHTMLTableToExcel);
+  function ReactHTMLTableToCSV(props) {
+    _classCallCheck(this, ReactHTMLTableToCSV);
 
-    var _this = _possibleConstructorReturn(this, (ReactHTMLTableToExcel.__proto__ || Object.getPrototypeOf(ReactHTMLTableToExcel)).call(this, props));
+    var _this = _possibleConstructorReturn(this, (ReactHTMLTableToCSV.__proto__ || Object.getPrototypeOf(ReactHTMLTableToCSV)).call(this, props));
 
     _this.handleDownload = _this.handleDownload.bind(_this);
     return _this;
   }
 
-  _createClass(ReactHTMLTableToExcel, [{
+  _createClass(ReactHTMLTableToCSV, [{
     key: 'handleDownload',
     value: function handleDownload() {
       if (!document) {
         if (process.env.NODE_ENV !== 'production') {
           console.error('Failed to access document object');
         }
-
         return null;
       }
 
@@ -65,41 +62,37 @@ var ReactHTMLTableToExcel = function (_Component) {
         if (process.env.NODE_ENV !== 'production') {
           console.error('Provided table property is not html table element');
         }
-
         return null;
       }
 
-      var table = document.getElementById(this.props.table).outerHTML;
-      var sheet = String(this.props.sheet);
-      var filename = String(this.props.filename) + '.xlsx';
+      var table = document.getElementById(this.props.table);
+      var rows = table.querySelectorAll('tr');
+      var csv = '';
 
-      var uri = 'data:application/vnd.ms-excel;base64,';
-      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>{table}</body></html>';
-
-      var context = {
-        worksheet: sheet || 'Worksheet',
-        table: table
-      };
-
-      // If IE11
-      if (window.navigator.msSaveOrOpenBlob) {
-        var fileData = ['' + ('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>') + table + '</body></html>'];
-        var blobObject = new Blob(fileData);
-        document.getElementById('react-html-table-to-excel').click()(function () {
-          window.navigator.msSaveOrOpenBlob(blobObject, filename);
+      rows.forEach(function (row) {
+        var cols = row.querySelectorAll('td, th');
+        var rowData = [];
+        cols.forEach(function (col) {
+          // Escape any commas and quotes in the cell data
+          var cellText = col.innerText.trim();
+          cellText = cellText.replace(/"/g, '""'); // Double quotes inside quotes
+          if (cellText.includes(',')) {
+            cellText = `"${cellText}"`; // Wrap in quotes if it contains commas
+          }
+          rowData.push(cellText);
         });
+        csv += rowData.join(',') + '\r\n'; // Join cell data with commas and add a new line
+      });
 
-        return true;
-      }
-
-      var element = window.document.createElement('a');
-      element.href = uri + ReactHTMLTableToExcel.base64(ReactHTMLTableToExcel.format(template, context));
-      element.download = filename;
+      // Create a link element and trigger the download
+      var filename = this.props.filename + '.csv';
+      var encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      var element = document.createElement('a');
+      element.setAttribute('href', encodedUri);
+      element.setAttribute('download', filename);
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
-
-      return true;
     }
   }, {
     key: 'render',
@@ -115,24 +108,12 @@ var ReactHTMLTableToExcel = function (_Component) {
         this.props.buttonText
       );
     }
-  }], [{
-    key: 'base64',
-    value: function base64(s) {
-      return window.btoa(unescape(encodeURIComponent(s)));
-    }
-  }, {
-    key: 'format',
-    value: function format(s, c) {
-      return s.replace(/{(\w+)}/g, function (m, p) {
-        return c[p];
-      });
-    }
   }]);
 
-  return ReactHTMLTableToExcel;
+  return ReactHTMLTableToCSV;
 }(_react.Component);
 
-ReactHTMLTableToExcel.propTypes = propTypes;
-ReactHTMLTableToExcel.defaultProps = defaultProps;
+ReactHTMLTableToCSV.propTypes = propTypes;
+ReactHTMLTableToCSV.defaultProps = defaultProps;
 
-exports.default = ReactHTMLTableToExcel;
+exports.default = ReactHTMLTableToCSV;
