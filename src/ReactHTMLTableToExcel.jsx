@@ -12,7 +12,7 @@ const propTypes = {
 };
 
 const defaultProps = {
-  id: 'button-download-as-xls',
+  id: 'button-download-as-xlsx',
   className: 'button-download',
   buttonText: 'Download',
 };
@@ -36,7 +36,6 @@ class ReactHTMLTableToExcel extends Component {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to access document object');
       }
-
       return null;
     }
 
@@ -44,47 +43,47 @@ class ReactHTMLTableToExcel extends Component {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Provided table property is not html table element');
       }
-
       return null;
     }
 
+    // Get the table HTML
     const table = document.getElementById(this.props.table).outerHTML;
     const sheet = String(this.props.sheet);
     const filename = `${String(this.props.filename)}.xlsx`;
 
+    // Basic XML template for the Excel workbook
     const uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,';
     const template =
-      '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' +
-      'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' +
-      'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' +
-      'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' +
-      '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' +
-      'xml><![endif]--></head><body>{table}</body></html>';
+      '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' +
+      '<head><meta charset="UTF-8"><!--[if gte mso 9]>' +
+      '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' +
+      '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' +
+      '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>' +
+      '<body>{table}</body></html>';
 
     const context = {
       worksheet: sheet || 'Worksheet',
       table,
     };
 
-    // If IE11
+    // For IE11 compatibility
     if (window.navigator.msSaveOrOpenBlob) {
       const fileData = [
-        `${'<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>'}${table}</body></html>`,
+        `${'<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]>' +
+        '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' +
+        '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' +
+        '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'}${table}</body></html>`
       ];
-      const blobObject = new Blob(fileData);
-      document.getElementById('react-html-table-to-excel').click()(() => {
+      const blobObject = new Blob(fileData, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      document.getElementById('react-html-table-to-excel').click(() => {
         window.navigator.msSaveOrOpenBlob(blobObject, filename);
       });
-
       return true;
     }
 
+    // For modern browsers
     const element = window.document.createElement('a');
-    element.href =
-      uri +
-      ReactHTMLTableToExcel.base64(
-        ReactHTMLTableToExcel.format(template, context),
-      );
+    element.href = uri + ReactHTMLTableToExcel.base64(ReactHTMLTableToExcel.format(template, context));
     element.download = filename;
     document.body.appendChild(element);
     element.click();
