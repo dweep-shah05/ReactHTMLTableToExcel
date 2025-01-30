@@ -76,26 +76,27 @@ var ReactHTMLTableToExcel = function (_Component) {
       var filename = '' + (String(this.props.filename) + '.' + filetype);
 
       var uri = 'data:application/vnd.ms-excel;base64,';
-      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>{table}</body></html>';
+      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>{table}</body></html>';
 
       var context = {
         worksheet: sheet || 'Worksheet',
         table: table
       };
 
-      // If IE11
+      // If IE11 or Edge
       if (window.navigator.msSaveOrOpenBlob) {
-        var fileData = ['' + ('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>') + table + '</body></html>'];
-        var blobObject = new Blob(fileData);
-        document.getElementById('react-html-table-to-excel').click()(function () {
-          window.navigator.msSaveOrOpenBlob(blobObject, filename);
-        });
+        var fileData = ['<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>' + table + '</body></html>'];
+        var blobObject = new Blob(fileData, { type: 'application/vnd.ms-excel' });
+        window.navigator.msSaveOrOpenBlob(blobObject, filename);
 
         return true;
       }
 
+      // For modern browsers
       var element = window.document.createElement('a');
-      element.href = uri + ReactHTMLTableToExcel.base64(ReactHTMLTableToExcel.format(template, context));
+      var content = filetype === 'xlsx' ? ReactHTMLTableToExcel.format(template, context) : ReactHTMLTableToExcel.format(template, context); // The logic remains mostly the same for styling in XLSX format (as styling is applied with HTML)
+
+      element.href = uri + ReactHTMLTableToExcel.base64(content);
       element.download = filename;
       document.body.appendChild(element);
       element.click();
