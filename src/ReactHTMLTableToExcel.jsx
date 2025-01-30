@@ -37,24 +37,27 @@ class ReactHTMLTableToExcel extends Component {
       if (process.env.NODE_ENV !== 'production') {
         console.error('Failed to access document object');
       }
-
       return null;
     }
 
-    if (document.getElementById(this.props.table).nodeType !== 1 || document.getElementById(this.props.table).nodeName !== 'TABLE') {
+    const tableElement = document.getElementById(this.props.table);
+
+    if (tableElement.nodeType !== 1 || tableElement.nodeName !== 'TABLE') {
       if (process.env.NODE_ENV !== 'production') {
-        console.error('Provided table property is not html table element');
+        console.error('Provided table property is not an HTML table element');
       }
-
       return null;
     }
 
-    const table = document.getElementById(this.props.table).outerHTML;
+    const table = tableElement.outerHTML;
     const sheet = String(this.props.sheet);
-    const filetype = String((this.props.filetype) ? (this.props.filetype === 'xlsx' ? 'xlsx' : 'xls') : 'xls');
-    const filename = `${String(this.props.filename) + '.' + filetype}`;
+    const filetype = String(this.props.filetype || 'xls');  // Default to 'xls' if not specified
+    const filename = `${String(this.props.filename)}.${filetype}`;
 
-    const uri = 'data:application/vnd.ms-excel;base64,';
+    const uri = (filetype === 'xlsx')
+      ? 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,'  // MIME type for .xlsx
+      : 'data:application/vnd.ms-excel;base64,';  // MIME type for .xls
+
     const template =
       '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>{table}</body></html>';
 
@@ -68,7 +71,7 @@ class ReactHTMLTableToExcel extends Component {
       const fileData = [
         `${'<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body>'}${table}</body></html>`,
       ];
-      const blobObject = new Blob(fileData, { type: 'application/vnd.ms-excel' });
+      const blobObject = new Blob(fileData, { type: (filetype === 'xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/vnd.ms-excel' });
       window.navigator.msSaveOrOpenBlob(blobObject, filename);
 
       return true;
@@ -76,9 +79,7 @@ class ReactHTMLTableToExcel extends Component {
 
     // For modern browsers
     const element = window.document.createElement('a');
-    const content = (filetype === 'xlsx')
-      ? ReactHTMLTableToExcel.format(template, context)
-      : ReactHTMLTableToExcel.format(template, context);  // The logic remains mostly the same for styling in XLSX format (as styling is applied with HTML)
+    const content = ReactHTMLTableToExcel.format(template, context);
 
     element.href = uri + ReactHTMLTableToExcel.base64(content);
     element.download = filename;
