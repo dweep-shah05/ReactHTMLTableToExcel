@@ -26,6 +26,7 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 var propTypes = {
   table: _propTypes2.default.string.isRequired,
   filename: _propTypes2.default.string.isRequired,
+  filetype: _propTypes2.default.string,
   sheet: _propTypes2.default.string.isRequired,
   id: _propTypes2.default.string,
   className: _propTypes2.default.string,
@@ -33,7 +34,7 @@ var propTypes = {
 };
 
 var defaultProps = {
-  id: 'button-download-as-xlsx',
+  id: 'button-download-as-xls',
   className: 'button-download',
   buttonText: 'Download'
 };
@@ -50,76 +51,50 @@ var ReactHTMLTableToExcel = function (_Component) {
     return _this;
   }
 
-  // Helper function to convert HTML table to CSV
-
-
   _createClass(ReactHTMLTableToExcel, [{
-    key: 'tableToCSV',
-    value: function tableToCSV() {
-      var table = document.getElementById(this.props.table);
-      var rows = table.querySelectorAll('tr');
-      var csv = '';
-
-      rows.forEach(function (row) {
-        var cols = row.querySelectorAll('td, th');
-        var rowData = [];
-        cols.forEach(function (col) {
-          var cellText = col.innerText.trim();
-          cellText = cellText.replace(/"/g, '""'); // Escape any quotes
-          if (cellText.includes(',')) {
-            cellText = '"' + cellText + '"'; // Wrap in quotes if it contains commas
-          }
-          rowData.push(cellText);
-        });
-        csv += rowData.join(',') + '\r\n'; // Join with commas, add new line for each row
-      });
-
-      return csv;
-    }
-
-    // Handle file download logic
-
-  }, {
     key: 'handleDownload',
     value: function handleDownload() {
       if (!document) {
         if (process.env.NODE_ENV !== 'production') {
           console.error('Failed to access document object');
         }
+
         return null;
       }
 
       if (document.getElementById(this.props.table).nodeType !== 1 || document.getElementById(this.props.table).nodeName !== 'TABLE') {
         if (process.env.NODE_ENV !== 'production') {
-          console.error('Provided table property is not an HTML table element');
+          console.error('Provided table property is not html table element');
         }
+
         return null;
       }
 
-      // Generate CSV data from the HTML table
-      var csv = this.tableToCSV();
+      var table = document.getElementById(this.props.table).outerHTML;
+      var sheet = String(this.props.sheet);
+      var filetype = String(this.props.filetype ? this.props.filetype === 'xlsx' ? 'xlsx' : 'xls' : 'xls');
+      var filename = '' + (String(this.props.filename) + '.' + filetype);
 
-      // Mimic an Excel file using CSV data in a .xlsx wrapper
-      var uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,';
-      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">' + '<head><meta charset="UTF-8"><!--[if gte mso 9]>' + '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' + '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>' + '<body><pre>{csv}</pre></body></html>';
+      var uri = 'data:application/vnd.ms-excel;base64,';
+      var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>{table}</body></html>';
 
       var context = {
-        worksheet: this.props.sheet || 'Sheet1',
-        csv: csv // Insert the CSV data as body content
+        worksheet: sheet || 'Worksheet',
+        table: table
       };
 
-      var filename = String(this.props.filename) + '.xlsx';
-
-      // For Internet Explorer (IE11 support)
+      // If IE11
       if (window.navigator.msSaveOrOpenBlob) {
-        var fileData = ['' + ('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]>' + '<xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name>' + '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>' + '</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><pre>') + csv + '</pre></body></html>'];
-        var blobObject = new Blob(fileData, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        window.navigator.msSaveOrOpenBlob(blobObject, filename);
+        var fileData = ['' + ('<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-mic' + 'rosoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta cha' + 'rset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:Exce' + 'lWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/>' + '</x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></' + 'xml><![endif]--></head><body>') + table + '</body></html>'];
+        var blobObject = new Blob(fileData);
+        document.getElementById('react-html-table-to-excel').click()(function () {
+          window.navigator.msSaveOrOpenBlob(blobObject, filename);
+        });
+
         return true;
       }
 
-      // For modern browsers
-      var element = document.createElement('a');
+      var element = window.document.createElement('a');
       element.href = uri + ReactHTMLTableToExcel.base64(ReactHTMLTableToExcel.format(template, context));
       element.download = filename;
       document.body.appendChild(element);
@@ -139,8 +114,20 @@ var ReactHTMLTableToExcel = function (_Component) {
           type: 'button',
           onClick: this.handleDownload
         },
-        this.props.buttonText
+        this.props.children ? this.props.children : this.props.buttonText
       );
+    }
+  }], [{
+    key: 'base64',
+    value: function base64(s) {
+      return window.btoa(unescape(encodeURIComponent(s)));
+    }
+  }, {
+    key: 'format',
+    value: function format(s, c) {
+      return s.replace(/{(\w+)}/g, function (m, p) {
+        return c[p];
+      });
     }
   }]);
 
